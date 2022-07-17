@@ -9,7 +9,7 @@ import requests
 intents = discord.Intents.default()
 intents.members = True
 
-api_key = ""
+riot_api_key = ""
 
 client = discord.Bot(command_prefix = '.', intents=intents)
 
@@ -332,7 +332,7 @@ async def register(ctx, summoner: discord.Option(str)):
     summonerName = summoner
 
     async def verifySummoner_callback(interaction):
-        r = requests.get(f"https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={api_key}")
+        r = requests.get(f"https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={riot_api_key}")
         dic = json.loads(r.content)
         if str(dic["profileIconId"]) == "4":
             with open('users.json', 'r') as data:
