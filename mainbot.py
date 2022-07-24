@@ -1,7 +1,7 @@
-from ast import Interactive
 import asyncio
 import discord
 import queueHandler
+import rofldecoder
 import random
 import time
 import json
@@ -366,5 +366,46 @@ async def register(ctx, summoner: discord.Option(str)):
 
     await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
 
+
+
+@client.event
+async def on_message(message): # Get game file
+    if message.channel.name == "priva" and message.author.bot != True:
+        try:
+            filename = message.attachments[0].filename
+            filenameOnly = filename.split(".")[0]
+            filenameEnding = filename.split(".")[1]
+            url = message.attachments[0].url
+        except:
+            filenameEnding = None
+
+        if filenameEnding == "rofl":
+            with open("database.json", "r") as dataBase:
+                database = json.load(dataBase)
+            if filenameOnly not in database["pastGames"]:
+
+                response = requests.get(url) # Get file from discord server
+
+                with open("tempgame.rofl", "wb") as tempgame: # Read/Write file
+                    tempgame.write(response.content)
+                database["pastGames"].append(filenameOnly)
+                outData = json.dumps(database, indent=4)
+                with open("database.json", "w") as data:
+                    data.write(outData)
+
+                dicts = rofldecoder.decodeRofl(filename)
+                winMsg = f"[VICTORY]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
+                loseMsg = f"[DEFEAT]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
+
+                gameProcessedMsg = winMsg + loseMsg
+
+                await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
+
+            else:
+                await message.reply(content=f"Game [{filenameOnly}] has already been processed.")
+        else:
+            await message.reply(content=f"Please enter a valid gamefile")
+    else:
+        pass
 
 client.run('')
