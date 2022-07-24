@@ -1,3 +1,4 @@
+from ast import Interactive
 import asyncio
 import discord
 import queueHandler
@@ -5,6 +6,7 @@ import random
 import time
 import json
 import requests
+from datetime import datetime
 
 intents = discord.Intents.default()
 intents.members = True
@@ -36,6 +38,9 @@ async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 =
             summoners.append(m)
     totalSummoners = len(summoners)
 
+    now = datetime.now() # Getting current time
+    current_time = now.strftime("(%d.%m %H:%M:%S)")
+
     try: # Create and send Queue message
         rolesText = f"Top:     {roles['top'][1]}  {roles['top'][0]}\nJungle:  {roles['jungle'][1]}  {roles['jungle'][0]}\nMid:     {roles['mid'][1]}  {roles['mid'][0]}\nBottom:  {roles['bottom'][1]}  {roles['bottom'][0]}\nSupport: {roles['support'][1]}  {roles['support'][0]}"
         if action == 1:
@@ -43,30 +48,37 @@ async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 =
         elif action == 2:
             lastAction = f"> [{user}] left queue"
         else:
-            lastAction = f">"
-        await mainMessage.edit(content=f"```ini\n[{totalSummoners} Summoners in Queue]\n{rolesText}\n________________________\n{lastAction}```")
+            lastAction = f"> Started queue"
+        await mainMessage.edit(content=f"```ini\n[{totalSummoners} Summoners in Queue]\n{rolesText}\n____________________________________\n{lastAction} {current_time}```")
     except:
         pass
 
-async def queueDictHandler(user, id, role):
-    attr = getattr(queue, role)
-    all_values = [value for elem in attr for value in elem.values()] # Get values from queue object
-
-    if id in all_values: # Check if user already in queue
-        pass
-    else:
-        queue.enterQueue(id)
-        attr.append({user : id})
-        setattr(queue, role, attr)
+async def queueDictHandler(user, id, role, interaction):
+    with open('users.json', 'r') as data:
+        playerData = json.load(data)
         
-    if queue.checkQueue() == 1:
-        await queuePopHandler()
-    else:
-        pass
+        if str(id) in list(playerData.keys()): # Check if player has registered using ID
+        
+            attr = getattr(queue, role)
+            all_values = [value for elem in attr for value in elem.values()] # Get values from queue object
 
-    await queueMessageHandler(user, 1, role)
-    queue.acceptCheck = 0
-    print(queue.__dict__.values())
+            if id in all_values: # Check if user already in queue
+                pass
+            else:
+                queue.enterQueue(id)
+                attr.append({user : id})
+                setattr(queue, role, attr)
+                
+            if queue.checkQueue() == 1:
+                await queuePopHandler()
+            else:
+                pass
+
+            await queueMessageHandler(user, 1, role)
+            queue.acceptCheck = 0
+            print(queue.__dict__.values())
+        else:
+            await interaction.response.send_message('Queue FAILED! You are not registered. To register, use the command "/register (EUW Summoner Name)"', ephemeral=True)
 
 async def removePastMsgs():
     async for message in mainChannel.history(limit=15): # Delete messages
@@ -273,23 +285,23 @@ class View(discord.ui.View):
 
     @discord.ui.button(label="Top", style=discord.ButtonStyle.secondary, emoji="<:loltop:997609506890596423>")
     async def top_button_callback(self, button, interaction):
-        await queueDictHandler(interaction.user.name, interaction.user.id, "top")
+        await queueDictHandler(interaction.user.name, interaction.user.id, "top", interaction)
 
     @discord.ui.button(label="Jungle", style=discord.ButtonStyle.secondary, emoji="<:loljungle:997609532056420393>")
     async def jungle_button_callback(self, button, interaction):
-        await queueDictHandler(interaction.user.name, interaction.user.id, "jungle")
+        await queueDictHandler(interaction.user.name, interaction.user.id, "jungle", interaction)
 
     @discord.ui.button(label="Mid", style=discord.ButtonStyle.secondary, emoji="<:lolmid:997609577547837561>")
     async def mid_button_callback(self, button, interaction):
-        await queueDictHandler(interaction.user.name, interaction.user.id, "mid")
+        await queueDictHandler(interaction.user.name, interaction.user.id, "mid", interaction)
 
     @discord.ui.button(label="Bottom", style=discord.ButtonStyle.secondary, emoji="<:loladc:997609620862419044>")
     async def bottom_button_callback(self, button, interaction):
-        await queueDictHandler(interaction.user.name, interaction.user.id, "bottom")
+        await queueDictHandler(interaction.user.name, interaction.user.id, "bottom", interaction)
 
     @discord.ui.button(label="Support", style=discord.ButtonStyle.secondary, emoji="<:lolsupport:997609646040830114>")
     async def support_button_callback(self, button, interaction):
-        await queueDictHandler(interaction.user.name, interaction.user.id, "support")
+        await queueDictHandler(interaction.user.name, interaction.user.id, "support", interaction)
 
     @discord.ui.button(label="Leave", style=discord.ButtonStyle.secondary, emoji="✖")
     async def leave_button_callback(self, button, interaction):
@@ -322,8 +334,6 @@ async def clear(ctx):
         await ctx.channel.purge(limit=10)
     else:
         pass
-
-        
 
 
 @client.slash_command()
