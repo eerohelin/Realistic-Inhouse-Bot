@@ -54,10 +54,10 @@ async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 =
         pass
 
 async def queueDictHandler(user, id, role, interaction):
-    with open('users.json', 'r') as data:
-        playerData = json.load(data)
+    with open('database.json', 'r') as data:
+        database = json.load(data)
         
-        if str(id) in list(playerData.keys()): # Check if player has registered using ID
+        if str(id) in list(database['userData'].keys()): # Check if player has registered using ID
         
             attr = getattr(queue, role)
             all_values = [value for elem in attr for value in elem.values()] # Get values from queue object
@@ -183,7 +183,7 @@ async def queueAcceptHandler():
     for i in range(len(teams)):
         for k in teams[i]:
             try:
-                teams[i]["opgg"].append(list(teams[i][k].values())[0])
+                teams[i]["opgg"].append(list(teams[i][k].values())[0]) # Appends user ID
                 teams[i][k] = list(teams[i][k].keys())[0]
             except:
                 pass
@@ -194,14 +194,14 @@ async def queueAcceptHandler():
     redTeam = f"[Red Team]\nTop:     {red['top']}\nJungle:  {red['jungle']}\nMid:     {red['mid']}\nBottom:  {red['bottom']}\nSupport: {red['support']}"
     createdTeams = f"{blueTeam}\n\n{redTeam}"
     
-    with open('users.json', 'r') as data: # Create OPGG's by getting the summonernames from users.json using ID
-        playerData = json.load(data)
+    with open('database.json', 'r') as data: # Create OPGG's by getting the summonernames from database.json using ID
+        database = json.load(data)
         bOPGG = ""
         for i in blue["opgg"]:
-            bOPGG += f"{playerData[str(i)]},"
+            bOPGG += f"{database['userData'][str(i)]['summoner']},"
         rOPGG = ""
         for i in red["opgg"]:
-            rOPGG += f"{playerData[str(i)]},"
+            rOPGG += f"{database['userData'][str(i)]['summoner']},"
 
     blueOPGG = f"https://euw.op.gg/multisearch/euw?summoners={bOPGG}"
     redOPGG = f"https://euw.op.gg/multisearch/euw?summoners={rOPGG}"
@@ -345,13 +345,15 @@ async def register(ctx, summoner: discord.Option(str)):
         r = requests.get(f"https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={riot_api_key}")
         dic = json.loads(r.content)
         if str(dic["profileIconId"]) == "4":
-            with open('users.json', 'r') as data:
-                playerData = json.load(data)
+            with open('database.json', 'r') as data:
+                dataBase = json.load(data)
+            path = dataBase['userData'][str(ctx.user.id)] = {}
+            path['summoner'] = summonerName
+            path['wins'] = 0
+            path['losses'] = 0
+            outData = json.dumps(dataBase, indent=4)
 
-            playerData[str(ctx.user.id)] = summonerName
-            outData = json.dumps(playerData, indent=4)
-
-            with open('users.json', 'w') as data:
+            with open('database.json', 'w') as data:
                 data.write(outData)
 
             await ctx.respond(ephemeral=True, content=f"```ini\nSuccesfully registered summoner [{summonerName}]```")
@@ -364,48 +366,57 @@ async def register(ctx, summoner: discord.Option(str)):
     verifyView = discord.ui.View()
     verifyView.add_item(verifyButton)
 
-    await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
+    with open('database.json', 'r') as datab:
+        database = json.load(datab)
+
+        if str(ctx.user.id) in list(database['userData'].keys()): # Check if user has already registered
+            await ctx.respond(ephemeral=True, content="You have already registered. If you wish to change your summoner name, please contact an admin.")
+        else:
+            await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
 
 
 
 @client.event
 async def on_message(message): # Get game file
-    if message.channel.name == "priva" and message.author.bot != True:
-        try:
-            filename = message.attachments[0].filename
-            filenameOnly = filename.split(".")[0]
-            filenameEnding = filename.split(".")[1]
-            url = message.attachments[0].url
-        except:
-            filenameEnding = None
+    try:
+        if message.channel.name == "priva" and message.author.bot != True:
+            try:
+                filename = message.attachments[0].filename
+                filenameOnly = filename.split(".")[0]
+                filenameEnding = filename.split(".")[1]
+                url = message.attachments[0].url
+            except:
+                filenameEnding = None
 
-        if filenameEnding == "rofl":
-            with open("database.json", "r") as dataBase:
-                database = json.load(dataBase)
-            if filenameOnly not in database["pastGames"]:
+            if filenameEnding == "rofl":
+                with open("database.json", "r") as dataBase:
+                    database = json.load(dataBase)
+                if filenameOnly not in database["pastGames"]:
 
-                response = requests.get(url) # Get file from discord server
+                    response = requests.get(url) # Get file from discord server
 
-                with open("tempgame.rofl", "wb") as tempgame: # Read/Write file
-                    tempgame.write(response.content)
-                database["pastGames"].append(filenameOnly)
-                outData = json.dumps(database, indent=4)
-                with open("database.json", "w") as data:
-                    data.write(outData)
+                    with open("tempgame.rofl", "wb") as tempgame: # Read/Write file
+                        tempgame.write(response.content)
+                    database["pastGames"].append(filenameOnly)
+                    outData = json.dumps(database, indent=4)
+                    with open("database.json", "w") as data:
+                        data.write(outData)
 
-                dicts = rofldecoder.decodeRofl(filename)
-                winMsg = f"[VICTORY]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
-                loseMsg = f"[DEFEAT]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
+                    dicts = rofldecoder.decodeRofl(filename)
+                    winMsg = f"[VICTORY]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
+                    loseMsg = f"[DEFEAT]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
 
-                gameProcessedMsg = winMsg + loseMsg
+                    gameProcessedMsg = winMsg + loseMsg
 
-                await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
+                    await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
 
+                else:
+                    await message.reply(content=f"Game [{filenameOnly}] has already been processed.")
             else:
-                await message.reply(content=f"Game [{filenameOnly}] has already been processed.")
+                await message.reply(content=f"Please enter a valid gamefile")
         else:
-            await message.reply(content=f"Please enter a valid gamefile")
-    else:
+            pass
+    except:
         pass
 
 client.run('')
