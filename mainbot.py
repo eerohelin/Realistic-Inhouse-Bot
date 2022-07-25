@@ -11,7 +11,7 @@ from datetime import datetime
 intents = discord.Intents.default()
 intents.members = True
 
-riot_api_key = ""
+riot_api_key = "RGAPI-5b5bd0c8-1ec3-4ff4-8a8a-3bd682ddf549"
 
 client = discord.Bot(command_prefix = '.', intents=intents)
 
@@ -419,4 +419,4 @@ async def on_message(message): # Get game file
     except:
         pass
 
-client.run('')
+client.run('OTk2OTI5NzExNTM4MTkyNDE2.GeU2KF.OHF7ddyGLw68J66xrJh1GPGsTDIXiBa9RTzwfw')
