@@ -11,7 +11,7 @@ from datetime import datetime
 intents = discord.Intents.default()
 intents.members = True
 
-riot_api_key = "RGAPI-5b5bd0c8-1ec3-4ff4-8a8a-3bd682ddf549"
+riot_api_key = ""
 
 client = discord.Bot(command_prefix = '.', intents=intents)
 
@@ -374,6 +374,8 @@ async def register(ctx, summoner: discord.Option(str)):
         else:
             await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
 
+async def updatePlayerStats():
+    pass
 
 
 @client.event
@@ -402,7 +404,31 @@ async def on_message(message): # Get game file
                     with open("database.json", "w") as data:
                         data.write(outData)
 
-                    dicts = rofldecoder.decodeRofl(filename)
+                    
+                    dicts = rofldecoder.decodeRoflGameResult(filename)
+
+                    winners = [] # Add wins/losses to database
+                    losers = []
+                    for i in dicts['win']: # Get names of winners/losers
+                        winners.append(i.split(" (")[0])
+                    for i in dicts['lose']:
+                        losers.append(i.split(" (")[0])
+                    
+                    with open('database.json', 'r') as database:
+                        db = json.load(database)
+                    
+                    for i in list(db['userData'].keys()): # Change win/lose numbers
+                        if db['userData'][i]['summoner'] in winners:
+                            db['userData'][i]['wins'] += 1
+                        elif db['userData'][i]['summoner'] in losers:
+                            db['userData'][i]['losses'] += 1
+                        else:
+                            pass
+
+                    outData = json.dumps(db, indent=4)
+                    with open('database.json', 'w') as data:
+                        data.write(outData)
+
                     winMsg = f"[VICTORY]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
                     loseMsg = f"[DEFEAT]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
 
@@ -419,4 +445,4 @@ async def on_message(message): # Get game file
     except:
         pass
 
-client.run('OTk2OTI5NzExNTM4MTkyNDE2.GeU2KF.OHF7ddyGLw68J66xrJh1GPGsTDIXiBa9RTzwfw')
+client.run('')

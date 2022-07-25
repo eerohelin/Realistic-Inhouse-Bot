@@ -1,6 +1,6 @@
 import json
 
-def decodeRofl(filename):
+def decodeRoflGameResult(filename):
     dicts = []
     with open('tempgame.rofl', 'r', encoding='latin1') as data:
     
