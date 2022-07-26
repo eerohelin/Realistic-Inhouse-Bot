@@ -2,6 +2,7 @@ import asyncio
 import discord
 import queueHandler
 import rofldecoder
+import calculateMMR
 import random
 import time
 import json
@@ -265,7 +266,7 @@ async def queuePopHandler():
     global playerObjects
     playerObjects = []
 
-    for i in acceptlist: # Create Objects
+    for i in acceptlist: # Create queuepop player objects
         k = queuePopPlayer(i[1], i[0], i[2])
         playerObjects.append(k)
 
@@ -336,7 +337,7 @@ async def clear(ctx):
         pass
 
 
-@client.slash_command()
+@client.slash_command(description="Register an EUW League of Legends account")
 async def register(ctx, summoner: discord.Option(str)):
 
     summonerName = summoner
@@ -344,11 +345,12 @@ async def register(ctx, summoner: discord.Option(str)):
     async def verifySummoner_callback(interaction):
         r = requests.get(f"https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={riot_api_key}")
         dic = json.loads(r.content)
-        if str(dic["profileIconId"]) == "4":
+        if str(dic["profileIconId"]) == "4": # Check if Icon is correct
             with open('database.json', 'r') as data:
                 dataBase = json.load(data)
-            path = dataBase['userData'][str(ctx.user.id)] = {}
+            path = dataBase['userData'][str(ctx.user.id)] = {} # Create player in database.json
             path['summoner'] = summonerName
+            path['points'] = 1000
             path['wins'] = 0
             path['losses'] = 0
             outData = json.dumps(dataBase, indent=4)
@@ -374,13 +376,12 @@ async def register(ctx, summoner: discord.Option(str)):
         else:
             await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
 
-async def updatePlayerStats():
-    pass
+
 
 
 @client.event
 async def on_message(message): # Get game file
-    try:
+    # try:
         if message.channel.name == "priva" and message.author.bot != True:
             try:
                 filename = message.attachments[0].filename
@@ -406,22 +407,27 @@ async def on_message(message): # Get game file
 
                     
                     dicts = rofldecoder.decodeRoflGameResult(filename)
+                    mmrDicts = rofldecoder.decodeRoflMmrResult(filename)
+                    gain_loss = calculateMMR.calculateMMR(990, mmrDicts[1]) # Change 990 to mmrDicts[0]
 
-                    winners = [] # Add wins/losses to database
+                    # ----  Add wins/losses to database ----
+                    winners = []
                     losers = []
                     for i in dicts['win']: # Get names of winners/losers
-                        winners.append(i.split(" (")[0])
+                        winners.append(i.split(" (")[0].lower())
                     for i in dicts['lose']:
-                        losers.append(i.split(" (")[0])
+                        losers.append(i.split(" (")[0].lower())
                     
                     with open('database.json', 'r') as database:
                         db = json.load(database)
                     
-                    for i in list(db['userData'].keys()): # Change win/lose numbers
-                        if db['userData'][i]['summoner'] in winners:
+                    for i in list(db['userData'].keys()): # Change win/lose numbers + MMR
+                        if db['userData'][i]['summoner'].lower() in winners:
                             db['userData'][i]['wins'] += 1
-                        elif db['userData'][i]['summoner'] in losers:
+                            db['userData'][i]['points'] += gain_loss[0]
+                        elif db['userData'][i]['summoner'].lower() in losers:
                             db['userData'][i]['losses'] += 1
+                            db['userData'][i]['points'] -= gain_loss[1]
                         else:
                             pass
 
@@ -429,8 +435,8 @@ async def on_message(message): # Get game file
                     with open('database.json', 'w') as data:
                         data.write(outData)
 
-                    winMsg = f"[VICTORY]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
-                    loseMsg = f"[DEFEAT]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
+                    winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
+                    loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
 
                     gameProcessedMsg = winMsg + loseMsg
 
@@ -442,7 +448,7 @@ async def on_message(message): # Get game file
                 await message.reply(content=f"Please enter a valid gamefile")
         else:
             pass
-    except:
-        pass
+    # except:
+    #     pass
 
 client.run('')
