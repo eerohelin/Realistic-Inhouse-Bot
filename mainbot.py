@@ -518,11 +518,10 @@ async def on_message(message): # Get game file
                     # ----  Add wins/losses to database ----
                     winners = []
                     losers = []
-                    for i in dicts['win']: # Get names of winners/losers
-                        winners.append(i.split(" (")[0].lower())
-                    for i in dicts['lose']:
-                        losers.append(i.split(" (")[0].lower())
-                    
+                    for i in dicts[1]['win']: # Get names of winners/losers
+                        winners.append(i.split("(")[0].lower())
+                    for i in dicts[1]['lose']:
+                        losers.append(i.split("(")[0].lower())
                     with open('database.json', 'r') as database:
                         db = json.load(database)
                     
@@ -541,8 +540,8 @@ async def on_message(message): # Get game file
                         data.write(outData)
                     # ---- ----
                     
-                    winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
-                    loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
+                    winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts[0]['win'][0]}\n{dicts[0]['win'][1]}\n{dicts[0]['win'][2]}\n{dicts[0]['win'][3]}\n{dicts[0]['win'][4]}\n\n"
+                    loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts[0]['lose'][0]}\n{dicts[0]['lose'][1]}\n{dicts[0]['lose'][2]}\n{dicts[0]['lose'][3]}\n{dicts[0]['lose'][4]}"
 
                     gameProcessedMsg = winMsg + loseMsg
 

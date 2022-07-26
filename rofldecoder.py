@@ -34,22 +34,29 @@ def decodeRoflGameResult(filename):
     "lose" : []
     }
 
+    resultsDisplay = {
+        "win" : [],
+        "lose" : []
+    }
+
     for i in range(0, 10):
         try:
             if dicts[i]["WIN"] == "Win":
                 name = dicts[i]['NAME'].encode("latin1").decode("utf8")
                 nameChampGap = " " * (17 - len(name))
                 champKdaGap = " " * (13 - len(dicts[i]['SKIN']))
-                results["win"].append(f"{name}{nameChampGap}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
+                results["win"].append(f"{name}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
+                resultsDisplay["win"].append(f"{name}{nameChampGap}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
             else:
                 name = dicts[i]['NAME'].encode("latin1").decode("utf8")
                 nameChampGap = " " * (17 - len(name))
                 champKdaGap = " " * (13 - len(dicts[i]['SKIN']))
-                results["lose"].append(f"{name}{nameChampGap}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
+                results["lose"].append(f"{name}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
+                resultsDisplay["lose"].append(f"{name}{nameChampGap}({dicts[i]['SKIN']}){champKdaGap}{dicts[i]['CHAMPIONS_KILLED']}/{dicts[i]['NUM_DEATHS']}/{dicts[i]['ASSISTS']}")
         except:
             pass
-
-    return results
+    fullResult = [resultsDisplay, results] # Results Display has a gap between the name and the champion, while "results" does not so the name detection will work
+    return fullResult
 
 def decodeRoflMmrResult(filename):
     dicts = []
