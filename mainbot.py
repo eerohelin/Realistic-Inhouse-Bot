@@ -3,6 +3,7 @@ import discord
 import queueHandler
 import rofldecoder
 import calculateMMR
+import leaderboardHandler
 import random
 import time
 import json
@@ -218,7 +219,7 @@ async def queueAcceptChecker():
     checkAll = []
     for i in playerObjects:
         checkAll.append(i.accepted)
-    if False in checkAll:
+    if False in checkAll: # Check if all players have accepted
         print("Not accepted")
     else:
         if queue.acceptCheck == 0:
@@ -336,6 +337,110 @@ async def clear(ctx):
     else:
         pass
 
+async def leadearboardEmbedHandler(embedVar, page):
+
+    # ---- CREATE THE PAGES ----
+    sortedPlayers = leaderboardHandler.sortLeaderboard()
+    numOfPages = 1
+    pageNum = 0
+    pagesGoneThrough = 0
+    pages = {}
+
+    for i in range(len(sortedPlayers)): # Get number of pages
+        pageNum += 1
+        if pageNum == 11:
+            numOfPages +=1
+            pageNum = 1
+
+    print(f"{numOfPages} {page}") # Check if requested page is out of reach
+    if numOfPages >= page:
+        pass
+    else:
+        return 0
+
+    for i in range(0, numOfPages): # Create an empty dict of pages
+        i += 1
+        pageName = "page" + str(i)
+        pages[str(pageName)] = []
+    
+    for i in range(0, numOfPages): # Create pages with each page holding 10 users
+        i += 1
+        for m in range(0, 10):
+            m += pagesGoneThrough
+            pageName = "page" + str(i)
+            try:
+                pages[pageName].append([f"{sortedPlayers[m]['summoner']}  ({sortedPlayers[m]['points']} ⚔)  {sortedPlayers[m]['wins']}W/{sortedPlayers[m]['losses']}L", f"{sortedPlayers[m]['wins']}W/{sortedPlayers[m]['losses']}L", m + 1])
+            except:
+                pass
+        pagesGoneThrough += 10
+    # ---- ----
+
+
+    wantedPage = "page" + str(page)
+    embedVar.clear_fields()
+    for i in pages[wantedPage]: # Change emoji based on player ranking
+        path = i
+        if path[2] == 1:
+            emoji = "🥇"
+        elif path[2] == 2:
+            emoji= "🥈"
+        elif path[2] == 3:
+            emoji = "🥉"
+        else: 
+            emoji = "🏅"
+
+        embedVar.add_field(name=f"{path[2]}. {emoji} {path[0]}", value="_ _", inline=False) # Create field
+    return 1
+
+@client.slash_command(description="View the whole leaderboard")
+async def leaderboard(ctx):
+    page = 1
+    if ctx.channel.name == "priva":
+        embedVar = discord.Embed(title="Leaderboard", description=f"!Realistic Leaderboard\n**Page {page}**", color=0x00ff00)
+
+        # ---- CHANGE PAGE ----
+        async def leaderBoardNextPage_callback(interaction):
+            nonlocal page
+            page += 1
+            await updateLeaderboard(page)
+        async def leaderBoardPrevPage_callback(interaction):
+            nonlocal page
+            if page - 1 != 0:
+                page -= 1
+                await updateLeaderboard(page)
+            else:
+                pass
+        # --- ----
+        
+
+        # ---- CREATE BUTTONS ----
+        leaderBoardButtonNext = discord.ui.Button(label=">", style=discord.ButtonStyle.secondary)
+        leaderBoardButtonNext.callback = leaderBoardNextPage_callback
+
+        leaderBoardButtonPrev = discord.ui.Button(label="<", style=discord.ButtonStyle.secondary)
+        leaderBoardButtonPrev.callback = leaderBoardPrevPage_callback
+
+        leaderBoardView = discord.ui.View()
+        leaderBoardView.add_item(leaderBoardButtonPrev)
+        leaderBoardView.add_item(leaderBoardButtonNext)
+        # ---- ----
+
+
+        await leadearboardEmbedHandler(embedVar, 1) # Initiate leaderboard
+        original_message = await ctx.respond(ephemeral=True, embed=embedVar, view=leaderBoardView)
+
+        async def updateLeaderboard(wantedPage):
+            nonlocal page
+            responseNum = await leadearboardEmbedHandler(embedVar, wantedPage) # Edit embed + get response ( 1 = success 0 = error)
+            if responseNum == 1:
+                embedVar.description = f"!Realistic Leaderboard\n**Page {page}**"
+                await original_message.edit_original_message(embed=embedVar, view=leaderBoardView) # Edit message
+            else:
+                page -= 1 # If requested page is out of reach
+
+    else:
+        pass
+
 
 @client.slash_command(description="Register an EUW League of Legends account")
 async def register(ctx, summoner: discord.Option(str)):
@@ -381,7 +486,7 @@ async def register(ctx, summoner: discord.Option(str)):
 
 @client.event
 async def on_message(message): # Get game file
-    # try:
+    try:
         if message.channel.name == "priva" and message.author.bot != True:
             try:
                 filename = message.attachments[0].filename
@@ -434,7 +539,8 @@ async def on_message(message): # Get game file
                     outData = json.dumps(db, indent=4)
                     with open('database.json', 'w') as data:
                         data.write(outData)
-
+                    # ---- ----
+                    
                     winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts['win'][0]}\n{dicts['win'][1]}\n{dicts['win'][2]}\n{dicts['win'][3]}\n{dicts['win'][4]}\n\n"
                     loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts['lose'][0]}\n{dicts['lose'][1]}\n{dicts['lose'][2]}\n{dicts['lose'][3]}\n{dicts['lose'][4]}"
 
@@ -448,7 +554,7 @@ async def on_message(message): # Get game file
                 await message.reply(content=f"Please enter a valid gamefile")
         else:
             pass
-    # except:
-    #     pass
+    except:
+        pass
 
 client.run('')
