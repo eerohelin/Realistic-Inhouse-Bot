@@ -19,7 +19,7 @@ client = discord.Bot(command_prefix = '.', intents=intents)
 
 queue = queueHandler.Queue([], [], [], [], [], 0) # Queue object
 
-async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 = Queued, 2 = Left Queue
+async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 = Queued, 2 = Left Queue 3 = Cleared Queue
     roles = {
         "top" : ["", 0],
         "jungle" : ["", 0],
@@ -49,6 +49,8 @@ async def queueMessageHandler(user=None, action=None, role=None): # Actions, 1 =
             lastAction = f"> [{user}] queued {role}"
         elif action == 2:
             lastAction = f"> [{user}] left queue"
+        elif action == 3:
+            lastAction = f"> {user} cleared queue"
         else:
             lastAction = f"> Started queue"
         await mainMessage.edit(content=f"```ini\n[{totalSummoners} Summoners in Queue]\n{rolesText}\n____________________________________\n{lastAction} {current_time}```")
@@ -320,11 +322,13 @@ async def startQueueFunction(channel):
         pass
 
 @client.slash_command(description="Starts the Queue")
-async def startqueue(ctx):
+async def startbot(ctx):
     if ctx.channel.name == "botti":
+        await ctx.channel.purge(limit=2)
         tempMsg = await ctx.respond("_ _")
         await tempMsg.delete_original_message()
         await startQueueFunction(ctx.channel)
+        await mainLeaderboardHandler()
     else:
         pass
     
@@ -336,6 +340,96 @@ async def clear(ctx):
         await ctx.channel.purge(limit=10)
     else:
         pass
+
+@client.slash_command()
+async def clearqueue(ctx):
+    if str(ctx.channel.id) == "997609315932307500":
+        queue.top = [] # Clear all role queues
+        queue.jungle = []
+        queue.mid = []
+        queue.bottom = []
+        queue.support = []
+        queue.acceptCheck = 0
+        await queueMessageHandler(action=3, user=ctx.user.name) # Update message
+        await ctx.respond("Succesfully cleared queue", ephemeral=True)
+    else:
+        pass
+
+async def getEmoji(number):
+    if number == 1:
+        emoji = "🥇"
+    elif number == 2:
+        emoji= "🥈"
+    elif number == 3:
+        emoji = "🥉"
+    else: 
+        emoji = "🏅"
+    return emoji
+
+@client.slash_command(description='View a users position on the leaderboard. Usage: /showpos (optional: @user)')
+async def showpos(ctx, summoner: discord.Option(str, required=False)):
+    sortedPlayers = leaderboardHandler.sortLeaderboard()
+
+    with open('database.json', 'r') as dataBase:
+        db = json.load(dataBase)
+
+    
+    if summoner == None: # If optional left empty
+        summonerName = db['userData'][str(ctx.user.id)]['summoner']
+        userID = str(ctx.user.id)
+    else:
+        try: # If optional is not a registered user
+            if summoner[:2] == "<@":
+                userID = summoner.split("!")[1].replace(">", "")
+                summonerName = db['userData'][str(userID)]['summoner']
+
+            else:
+                return 0
+        except:
+            summonerName = None
+
+    embedVar = discord.Embed(title="!Realistic Leaderboard", description=f"**Showing leaderboard position of <@{userID}>**", color=0x00ff00)
+
+    for i in range(len(sortedPlayers)):
+        if sortedPlayers[i]['summoner'] == summonerName:
+            embedVar.clear_fields()
+            emoji = await getEmoji(i)
+            embedVar.add_field(name=f"{i + 1}. {emoji} {sortedPlayers[i]['summoner']}  ({sortedPlayers[i]['points']} ⚔)  {sortedPlayers[i]['wins']}W/{sortedPlayers[i]['losses']}L", value="_ _", inline=False)
+        else:
+            pass
+    
+    if embedVar.fields != []:
+        await ctx.respond(ephemeral=True, embed=embedVar)
+    else:
+        await ctx.respond(ephemeral=True, content=f"User <@{userID}> does not have a registered account.")
+
+    
+
+async def updateMainLeaderboard():
+    sortedPlayers = leaderboardHandler.sortLeaderboard()
+    embedVar = discord.Embed(title="!Realistic Leaderboard", description=f"**Top 10**", color=0x00ff00)
+    embedVar.set_footer(text="/leaderboard to view the whole leaderboard\n/showpos to view a specific users position on the leaderboard")
+    embedVar.clear_fields()
+
+    for m in range(0, 10):
+        number = m + 1
+        emoji = await getEmoji(number)
+        embedVar.add_field(name=f"{m + 1}. {emoji} {sortedPlayers[m]['summoner']}  ({sortedPlayers[m]['points']} ⚔)  {sortedPlayers[m]['wins']}W/{sortedPlayers[m]['losses']}L", value="_ _", inline=False)
+    await mainLeaderboardMsg.edit(embed=embedVar)
+
+async def mainLeaderboardHandler():
+    channel = client.get_channel(1000844563394596945) # #Leaderboard
+    await channel.purge(limit=2)
+    embedVar = discord.Embed(title="!Realistic Leaderboard", description=f"**Top 10**", color=0x00ff00)
+    embedVar.set_footer(text="/leaderboard to view the whole leaderboard\n/showpos to view a specific users position on the leaderboard")
+    sortedPlayers = leaderboardHandler.sortLeaderboard()
+
+    for m in range(0, 10):
+        number = m + 1
+        emoji = await getEmoji(number)
+        embedVar.add_field(name=f"{m + 1}. {emoji} {sortedPlayers[m]['summoner']}  ({sortedPlayers[m]['points']} ⚔)  {sortedPlayers[m]['wins']}W/{sortedPlayers[m]['losses']}L", value="_ _", inline=False)
+    global mainLeaderboardMsg
+    mainLeaderboardMsg = await channel.send(embed=embedVar)
 
 async def leadearboardEmbedHandler(embedVar, page):
 
@@ -352,8 +446,7 @@ async def leadearboardEmbedHandler(embedVar, page):
             numOfPages +=1
             pageNum = 1
 
-    print(f"{numOfPages} {page}") # Check if requested page is out of reach
-    if numOfPages >= page:
+    if numOfPages >= page: # Check if requested page is out of reach
         pass
     else:
         return 0
@@ -380,14 +473,7 @@ async def leadearboardEmbedHandler(embedVar, page):
     embedVar.clear_fields()
     for i in pages[wantedPage]: # Change emoji based on player ranking
         path = i
-        if path[2] == 1:
-            emoji = "🥇"
-        elif path[2] == 2:
-            emoji= "🥈"
-        elif path[2] == 3:
-            emoji = "🥉"
-        else: 
-            emoji = "🏅"
+        emoji = await getEmoji(path[2])
 
         embedVar.add_field(name=f"{path[2]}. {emoji} {path[0]}", value="_ _", inline=False) # Create field
     return 1
@@ -396,7 +482,7 @@ async def leadearboardEmbedHandler(embedVar, page):
 async def leaderboard(ctx):
     page = 1
     if ctx.channel.name == "priva":
-        embedVar = discord.Embed(title="Leaderboard", description=f"!Realistic Leaderboard\n**Page {page}**", color=0x00ff00)
+        embedVar = discord.Embed(title="!Realistic Leaderboard", description=f"**Page {page}**", color=0x00ff00)
 
         # ---- CHANGE PAGE ----
         async def leaderBoardNextPage_callback(interaction):
@@ -433,7 +519,7 @@ async def leaderboard(ctx):
             nonlocal page
             responseNum = await leadearboardEmbedHandler(embedVar, wantedPage) # Edit embed + get response ( 1 = success 0 = error)
             if responseNum == 1:
-                embedVar.description = f"!Realistic Leaderboard\n**Page {page}**"
+                embedVar.description = f"**Page {page}**"
                 await original_message.edit_original_message(embed=embedVar, view=leaderBoardView) # Edit message
             else:
                 page -= 1 # If requested page is out of reach
@@ -544,6 +630,8 @@ async def on_message(message): # Get game file
                     loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts[0]['lose'][0]}\n{dicts[0]['lose'][1]}\n{dicts[0]['lose'][2]}\n{dicts[0]['lose'][3]}\n{dicts[0]['lose'][4]}"
 
                     gameProcessedMsg = winMsg + loseMsg
+
+                    await updateMainLeaderboard()
 
                     await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
 
