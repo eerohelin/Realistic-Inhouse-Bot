@@ -104,10 +104,9 @@ def decodeRoflMmrResult(filename):
                 else:
                     loseMMR.append(db["userData"][m]['points'])
 
-    try: # Remove when in use
-        avgWinMMR = sum(winMMR) / len(winMMR)
-    except:
-        avgWinMMR = 0
+
+    avgWinMMR = sum(winMMR) / len(winMMR)
+
     avgLoseMMR = sum(loseMMR) / len(loseMMR)
 
     result = [avgWinMMR, avgLoseMMR]

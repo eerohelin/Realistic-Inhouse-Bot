@@ -9,31 +9,31 @@ def calculateMMR(winTeamAVG, loseTeamAVG):
     differenceNum.sort(reverse=True) # Get difference between the numbers
     difference = differenceNum[0] - differenceNum[1]
 
-    if winTeamAVG > loseTeamAVG:
-        if difference >= 0 and difference <= 29:
+    if winTeamAVG >= loseTeamAVG:
+        if difference >= 0 and difference <= 39:
             winMultiplier = 0
             loseMultiplier = 0
-        elif difference >= 30 and difference <= 59:
+        elif difference >= 40 and difference <= 69:
             winMultiplier = 1
             loseMultiplier = 2
-        elif difference >= 60 and difference <= 79:
+        elif difference >= 70 and difference <= 89:
             winMultiplier = 2
             loseMultiplier = 3
-        elif difference > 80:
+        elif difference >= 90:
             winMultiplier = 3
             loseMultiplier = 4
         
-    elif winTeamAVG < loseTeamAVG:
-        if difference >= 0 and difference <= 29:
+    elif winTeamAVG <= loseTeamAVG:
+        if difference >= 0 and difference <= 39:
             winMultiplier = 0
             loseMultiplier = 0
-        elif difference >= 30 and difference <= 59:
+        elif difference >= 40 and difference <= 69:
             winMultiplier = 2
             loseMultiplier = 1
-        elif difference >= 60 and difference <= 79:
+        elif difference >= 70 and difference <= 89:
             winMultiplier = 3
             loseMultiplier = 2
-        elif difference > 80:
+        elif difference >= 90:
             winMultiplier = 4
             loseMultiplier = 3
 
