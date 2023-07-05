@@ -1,6 +1,7 @@
 import json
 
 
+
 def decodeRoflGameResult(filename):
     dicts = []
     with open('tempgame.rofl', 'r', encoding='latin1') as data:
@@ -104,10 +105,14 @@ def decodeRoflMmrResult(filename):
                 else:
                     loseMMR.append(db["userData"][m]['points'])
 
-
-    avgWinMMR = sum(winMMR) / len(winMMR)
-
-    avgLoseMMR = sum(loseMMR) / len(loseMMR)
+    try:
+        avgWinMMR = sum(winMMR) / len(winMMR)
+    except:
+        avgWinMMR = 1000
+    try:
+        avgLoseMMR = sum(loseMMR) / len(loseMMR)
+    except:
+        avgLoseMMR = 1000
 
     result = [avgWinMMR, avgLoseMMR]
 

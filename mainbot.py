@@ -12,8 +12,9 @@ from datetime import datetime
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
-riot_api_key = ""
+riot_api_key = "RGAPI-1d680c67-d208-41ab-b5f2-48c68aedc035"
 
 client = discord.Bot(command_prefix = '.', intents=intents)
 client.activity = discord.Activity(type=discord.ActivityType.listening, name="Great Comms")
@@ -261,7 +262,7 @@ async def queueAcceptHandler():
     await removePastMsgs() # Remove past messages and send message
     await mainChannel.send(f"```ini\n[MATCH ACCEPTED]\n\n{createdTeams}```\nBlue OPGG: {blueOPGG}\nRed OPGG: {redOPGG}\n\nDraft tool: https://draftlol.dawe.gg/")
 
-    await asyncio.sleep(600) # Wait 10 minutes ( 600s ) then start the Queue again
+    await asyncio.sleep(420) # Wait 7 minutes ( 420s ) then start the Queue again
     await removePastMsgs()
     await startQueueFunction(mainChannel)
 
@@ -437,10 +438,10 @@ async def startbot(ctx):
 @client.slash_command(description="Sends the Info message (moderator comand)")
 async def info(ctx):
     if str(ctx.channel.id) == "1004133620014915605":
-        await ctx.channel.purge(limit=2)
+        # await ctx.channel.purge(limit=2)
         embedInfo = discord.Embed(title="!Realistic Info", description=f"**Welcome to !Realistic**\n\n", color=0x2ecc71)
         embedInfo.add_field(name="How to play", value="To get started, head over to the **#bot-commands** channel and register an account with the **/register** command. (Instructions in the pinned message)\n\nAfter, you can simply head over to the **#queue** channel and queue to the role of your choosing!\n\nWhen enough players have queued up a message will appear asking you to accept the game. You will have (3) minutes to accept or the game will cancel and you will be removed from queue.\n\nOnce a game is finished, one of the players has to download the replay file, head over to the **#game-submit** channel, and upload the file there to update leaderboard ranking.")
-        embedInfo.add_field(name="Rules", value="• Hostile Toxicity has a zero tolerance policy\n• This is a tryhard queue so please act like it\n• No off-role without a special permission")
+        embedInfo.add_field(name="Rules", value="• Hostile Toxicity has a zero tolerance policy\n• This is a tryhard queue so please act like it\n• No off-role without a special permission\n• By accepting a game you commit yourself to play the resulting game whatever the teams might be\n\nFailing to follow these rules will lead to the removal of your ability to play in this queue")
         embedInfo.add_field(name="Bot Commands", value="For a list of bot commands, head on over to the **#bot-commands** channel and check the pinned message.")
         await ctx.respond(embed=embedInfo)
     
@@ -650,11 +651,14 @@ async def register(ctx, summoner: discord.Option(str)):
             if str(dic["profileIconId"]) == "4": # Check if Icon is correct
                 with open('database.json', 'r') as data:
                     dataBase = json.load(data)
-                path = dataBase['userData'][str(ctx.user.id)] = {} # Create player in database.json
-                path['summoner'] = summonerName
-                path['points'] = 1000
-                path['wins'] = 0
-                path['losses'] = 0
+                if str(ctx.user.id) in database['userData'].keys():
+                    dataBase['userData'][str(ctx.user.id)]["summoner"] = summonerName
+                else:
+                    path = dataBase['userData'][str(ctx.user.id)] = {} # Create player in database.json
+                    path['summoner'] = summonerName
+                    path['points'] = 1000
+                    path['wins'] = 0
+                    path['losses'] = 0
                 outData = json.dumps(dataBase, indent=4)
 
                 with open('database.json', 'w') as data:
@@ -675,9 +679,10 @@ async def register(ctx, summoner: discord.Option(str)):
             database = json.load(datab)
 
             if str(ctx.user.id) in list(database['userData'].keys()): # Check if user has already registered
-                await ctx.respond(ephemeral=True, content="You have already registered. If you wish to change your summoner name, please contact an admin.")
-            else:
-                await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
+                if database['userData'][str(ctx.user.id)]["summoner"] == summonerName:
+                    await ctx.respond(ephemeral=True, content="You have already registered. If you wish to change your summoner name, please contact an admin.")
+                    return
+            await ctx.respond(ephemeral=True, content=f'```ini\nPlease change your summoner icon to the one below and click "Verify" to verify Summoner [{summoner}]```', file=discord.File('lol_icon.png'), view=verifyView)
     else:
         pass
 
@@ -685,76 +690,77 @@ async def register(ctx, summoner: discord.Option(str)):
 
 @client.event
 async def on_message(message): # Get game file
-    # try:
-    if str(message.channel.id) == "1004029625204211802" and message.author.bot != True:
-        try:
-            filename = message.attachments[0].filename
-            filenameOnly = filename.split(".")[0]
-            filenameEnding = filename.split(".")[1]
-            url = message.attachments[0].url
-        except:
-            filenameEnding = None
+    try:
+        if str(message.channel.id) == "1004029625204211802" and message.author.bot != True:
+            try:
+                filename = message.attachments[0].filename
+                filenameOnly = filename.split(".")[0]
+                filenameEnding = filename.split(".")[1]
+                url = message.attachments[0].url
+            except:
+                filenameEnding = None
 
-        if filenameEnding == "rofl":
-            with open("database.json", "r") as dataBase:
-                database = json.load(dataBase)
-            if filenameOnly not in database["pastGames"]:
+            if filenameEnding == "rofl":
+                with open("database.json", "r") as dataBase:
+                    database = json.load(dataBase)
+                if filenameOnly not in database["pastGames"]:
 
-                response = requests.get(url) # Get file from discord server
+                    response = requests.get(url) # Get file from discord server
 
-                with open("tempgame.rofl", "wb") as tempgame: # Read/Write file
-                    tempgame.write(response.content)
-                database["pastGames"].append(filenameOnly)
-                outData = json.dumps(database, indent=4)
-                with open("database.json", "w") as data:
-                    data.write(outData)
+                    with open("tempgame.rofl", "wb") as tempgame: # Read/Write file
+                        tempgame.write(response.content)
+                    database["pastGames"].append(filenameOnly)
+                    outData = json.dumps(database, indent=4)
+                    with open("database.json", "w") as data:
+                        data.write(outData)
 
-                
-                dicts = rofldecoder.decodeRoflGameResult(filename)
-                mmrDicts = rofldecoder.decodeRoflMmrResult(filename)
-                gain_loss = calculateMMR.calculateMMR(mmrDicts[0], mmrDicts[1])
+                    
+                    dicts = rofldecoder.decodeRoflGameResult(filename)
+                    mmrDicts = rofldecoder.decodeRoflMmrResult(filename)
+                    gain_loss = calculateMMR.calculateMMR(mmrDicts[0], mmrDicts[1])
 
-                # ----  Add wins/losses to database ----
-                winners = []
-                losers = []
-                for i in dicts[1]['win']: # Get names of winners/losers
-                    winners.append(i.split("(")[0].lower())
-                for i in dicts[1]['lose']:
-                    losers.append(i.split("(")[0].lower())
-                with open('database.json', 'r') as database:
-                    db = json.load(database)
-                
-                for i in list(db['userData'].keys()): # Change win/lose numbers + MMR
-                    if db['userData'][i]['summoner'].lower() in winners:
-                        db['userData'][i]['wins'] += 1
-                        db['userData'][i]['points'] += gain_loss[0]
-                    elif db['userData'][i]['summoner'].lower() in losers:
-                        db['userData'][i]['losses'] += 1
-                        db['userData'][i]['points'] -= gain_loss[1]
-                    else:
-                        pass
+                    # ----  Add wins/losses to database ----
+                    winners = []
+                    losers = []
+                    for i in dicts[1]['win']: # Get names of winners/losers
+                        winners.append(i.split("(")[0].lower())
+                    for i in dicts[1]['lose']:
+                        losers.append(i.split("(")[0].lower())
+                    with open('database.json', 'r') as database:
+                        db = json.load(database)
+                    
+                    for i in list(db['userData'].keys()): # Change win/lose numbers + MMR
+                        if db['userData'][i]['summoner'].lower() in winners:
+                            db['userData'][i]['wins'] += 1
+                            db['userData'][i]['points'] += gain_loss[0]
+                        elif db['userData'][i]['summoner'].lower() in losers:
+                            db['userData'][i]['losses'] += 1
+                            db['userData'][i]['points'] -= gain_loss[1]
+                        else:
+                            pass
 
-                outData = json.dumps(db, indent=4)
-                with open('database.json', 'w') as data:
-                    data.write(outData)
-                # ---- ----
-                
-                winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts[0]['win'][0]}\n{dicts[0]['win'][1]}\n{dicts[0]['win'][2]}\n{dicts[0]['win'][3]}\n{dicts[0]['win'][4]}\n\n"
-                loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts[0]['lose'][0]}\n{dicts[0]['lose'][1]}\n{dicts[0]['lose'][2]}\n{dicts[0]['lose'][3]}\n{dicts[0]['lose'][4]}"
+                    outData = json.dumps(db, indent=4)
+                    with open('database.json', 'w') as data:
+                        data.write(outData)
+                    # ---- ----
+                    
+                    winMsg = f"[VICTORY +{gain_loss[0]}]\n{dicts[0]['win'][0]}\n{dicts[0]['win'][1]}\n{dicts[0]['win'][2]}\n{dicts[0]['win'][3]}\n{dicts[0]['win'][4]}\n\n"
+                    loseMsg = f"[DEFEAT -{gain_loss[1]}]\n{dicts[0]['lose'][0]}\n{dicts[0]['lose'][1]}\n{dicts[0]['lose'][2]}\n{dicts[0]['lose'][3]}\n{dicts[0]['lose'][4]}"
 
-                gameProcessedMsg = winMsg + loseMsg
+                    gameProcessedMsg = winMsg + loseMsg
 
-                await updateMainLeaderboard()
+                    await updateMainLeaderboard()
 
-                await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
+                    await message.reply(content=f"Game [{filenameOnly}] successfully processed.\n\n```ini\n{gameProcessedMsg}```")
 
+                else:
+                    await message.reply(content=f"Game [{filenameOnly}] has already been processed.")
             else:
-                await message.reply(content=f"Game [{filenameOnly}] has already been processed.")
+                await message.reply(content=f"Please enter a valid gamefile")
         else:
-            await message.reply(content=f"Please enter a valid gamefile")
-    else:
+            pass
+    except Exception as e:
+        print(e)
         pass
-    # except:
-    #     pass
 
-client.run('')
+client.run('OTk2OTI5NzExNTM4MTkyNDE2.G0zRkv.I61katMjIsyCzSFCGYS2DFAgwbl32j9xoJ-E2Q')
