@@ -1,44 +1,19 @@
 
 
-def calculateMMR(winTeamAVG, loseTeamAVG):
-
-    baseNumber = 15
-
-    differenceNum = [winTeamAVG, loseTeamAVG]
-
-    differenceNum.sort(reverse=True) # Get difference between the numbers
-    difference = differenceNum[0] - differenceNum[1]
-
-    if winTeamAVG >= loseTeamAVG:
-        if difference >= 0 and difference <= 39:
-            winMultiplier = 0
-            loseMultiplier = 0
-        elif difference >= 40 and difference <= 69:
-            winMultiplier = 1
-            loseMultiplier = 2
-        elif difference >= 70 and difference <= 89:
-            winMultiplier = 2
-            loseMultiplier = 3
-        elif difference >= 90:
-            winMultiplier = 3
-            loseMultiplier = 4
-        
-    elif winTeamAVG <= loseTeamAVG:
-        if difference >= 0 and difference <= 39:
-            winMultiplier = 0
-            loseMultiplier = 0
-        elif difference >= 40 and difference <= 69:
-            winMultiplier = 2
-            loseMultiplier = 1
-        elif difference >= 70 and difference <= 89:
-            winMultiplier = 3
-            loseMultiplier = 2
-        elif difference >= 90:
-            winMultiplier = 4
-            loseMultiplier = 3
-
-    lpGain = baseNumber + winMultiplier
-    lpLoss = baseNumber + loseMultiplier
+def calculateMMR(winTeamAVG, loseTeamAVG, K=30, scale=400, acc=0):
+    '''calculates MMR using standard ELO system
+    https://en.wikipedia.org/wiki/Elo_rating_system
+    K -- affects how much elo changes after adjusted for probability of result
+    scale -- how large difference means that there is 1/10 chance of winning
+    acc -- how many decimals are in the accuracy of the update
+    '''
+    
+    qwin = 10 ** (winTeamAVG / scale)
+    qloss = 10 ** (loseTeamAVG / scale)
+    winprob = qwin/(qwin+qloss)
+    lossprob = 1 - winprob
+    lpGain = round(K * winprob, acc)
+    lpLoss = round(K * lossprob, acc)
     gain_loss = [lpGain, lpLoss]
     #print(f"WIN Gained: {lpGain}\nLOSE Lost: {lpLoss}")
     return gain_loss
