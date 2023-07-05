@@ -14,7 +14,7 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-riot_api_key = "RGAPI-1d680c67-d208-41ab-b5f2-48c68aedc035"
+riot_api_key = ""
 
 client = discord.Bot(command_prefix = '.', intents=intents)
 client.activity = discord.Activity(type=discord.ActivityType.listening, name="Great Comms")
@@ -763,4 +763,4 @@ async def on_message(message): # Get game file
         print(e)
         pass
 
-client.run('OTk2OTI5NzExNTM4MTkyNDE2.G0zRkv.I61katMjIsyCzSFCGYS2DFAgwbl32j9xoJ-E2Q')
+client.run('')
